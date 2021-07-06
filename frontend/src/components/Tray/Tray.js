@@ -1,5 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
+import {Button,Icon,Popup,Label,} from 'semantic-ui-react'
 import './Tray.css';
+import Tour from "../tour"
 import TrayButton, {
   TYPE_MUTE_CAMERA,
   TYPE_MUTE_MIC,
@@ -11,7 +13,6 @@ import Chat from '../Chat/Chat';
 import CallObjectContext from '../../CallObjectContext';
 import { logDailyEvent } from '../../logUtils';
 import DailyIframe from '@daily-co/daily-js';
-
 /**
  * Gets [isCameraMuted, isMicMuted, isSharingScreen].
  * This function is declared outside Tray() so it's not recreated every render
@@ -107,37 +108,47 @@ export default function Tray(props) {
 
   return (
     <div className="tray">
-      <TrayButton
+      <TrayButton target="-camera"
         type={TYPE_MUTE_CAMERA}
         disabled={props.disabled}
         highlighted={isCameraMuted}
         onClick={toggleCamera}
       />
-      <TrayButton
+      <TrayButton target="-mic"
         type={TYPE_MUTE_MIC}
         disabled={props.disabled}
         highlighted={isMicMuted}
         onClick={toggleMic}
       />
       {DailyIframe.supportedBrowser().supportsScreenShare && (
-        <TrayButton
+        <TrayButton target="-screenshare"
           type={TYPE_SCREEN}
           disabled={props.disabled}
           highlighted={isSharingScreen}
           onClick={toggleSharingScreen}
         />
       )}
-      <TrayButton
+      <TrayButton target="-chat"
         type={TYPE_CHAT}
         disabled={props.disabled}
         highlighted={highlightedChat}
         onClick={toggleChat}
       />
+       <Popup 
+    on='click'
+    pinned
+    trigger={<Button className="tray-button-info" circular icon><Icon name='info'/></Button>}
+  >
+  <Button as='div' labelPosition='left'>
+           <Label  basic pointing='right'>{props.roomUrl}</Label>
+           <Button color='teal' icon onClick= { () => navigator.clipboard.writeText(props.roomUrl)}><Icon name='copy'/></Button>
+  </Button>
+  </Popup>
+      <Tour/>
       <Chat onClickDisplay={displayChat} notification={handleNewChat} />
-      <TrayButton
+      <TrayButton target="-leave"
         type={TYPE_LEAVE}
         disabled={props.disabled}
-        newButtonGroup={true}
         highlighted={true}
         onClick={leaveCall}
       />

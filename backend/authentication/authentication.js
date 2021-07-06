@@ -25,8 +25,8 @@ exports.loggingUser = async (req, res) => {
                   .status(404)
                   .send("Cannot update status . Maybe user was not found!");
               } else {
-                console.log(data);
-                res.status(200).send(user);
+               // console.log(data);
+                res.status(200).send(data);
               }
             })
             .catch((err) => {
@@ -41,7 +41,7 @@ exports.loggingUser = async (req, res) => {
     users
       .findOneAndUpdate(
         { email: req.body.email },
-        { status: "logged out" },
+        { $set:{ status: "logged out" , visit:"notfirst"}},
         { useFindAndModify: false }
       )
       .then((data) => {
@@ -50,8 +50,8 @@ exports.loggingUser = async (req, res) => {
             .status(404)
             .send("Cannot update status . Maybe user was not found!");
         } else {
-          console.log(data);
-          res.status(201).send("User logged out successfully.");
+          //console.log(data);
+          res.status(201).send(data);
         }
       })
       .catch((err) => {
@@ -64,6 +64,7 @@ exports.registerUser = async (req, res) => {
   let obj = {
     user_name: req.body.username,
     status: "logged in",
+    visit: "first",
     password: req.body.password,
     email: req.body.email,
   };
@@ -88,7 +89,7 @@ exports.registerUser = async (req, res) => {
 };
 
 exports.getRoom = async (req,res) => {
-const exp = Math.round(Date.now() / 1000) + 6 * 30;
+const exp = Math.round(Date.now() / 1000) + 10 * 30;
 const newRoomEndpoint ="https://api.daily.co/v1/rooms"
   const options = {
     properties: {

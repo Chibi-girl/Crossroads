@@ -33,6 +33,8 @@ this.state = { password: '', email: '',  errormessage:'', emailerror:false};
             this.setState({errormessage : "success",})
             console.log(response.data);
             localStorage.setItem("username", response.data.user_name);
+            localStorage.setItem("email",response.data.email);
+            localStorage.setItem("visit",response.data.visit);
       		setTimeout(function(){window.location.assign("http://localhost:3000/");},3000);
  
           } else {

@@ -1,10 +1,45 @@
-import { createMedia } from '@artsy/fresnel'
-import PropTypes from 'prop-types'
-import {withRouter, Link} from "react-router-dom";
-import React, { Component } from 'react';
-import {Button,Container,Divider,Grid,Header,Icon,Image,List,Menu,Segment,Sidebar,Visibility,} from 'semantic-ui-react'
+import React, { useEffect, useState, useCallback } from 'react';
+import Lottie from "react-lottie";
+import {withRouter} from "react-router-dom";
+import * as loading from "../animations/loading.json";
+import * as success from "../animations/success.json";
+import './Callpage.css';
+import axios from "axios";
+import {Button,Container,Divider,Grid,Header,Image,List,Menu,Segment,Visibility,Card} from 'semantic-ui-react'
 import HomepageHeading from "./homepage_heading";
 import Navigation from "./navigation";
+import Call from './Call/Call';
+import Tray from './Tray/Tray';
+import CallObjectContext from '../CallObjectContext';
+import { roomUrlFromPageUrl, pageUrlFromRoomUrl } from '../urlUtils';
+import { createMedia } from '@artsy/fresnel'
+import DailyIframe from '@daily-co/daily-js';
+import { logDailyEvent } from '../logUtils';
+
+const STATE_IDLE = 'STATE_IDLE';
+const STATE_CREATING = 'STATE_CREATING';
+const STATE_JOINING = 'STATE_JOINING';
+const STATE_JOINED = 'STATE_JOINED';
+const STATE_LEAVING = 'STATE_LEAVING';
+const STATE_ERROR = 'STATE_ERROR';
+
+const defaultOptions1 = {
+  loop: true,
+  autoplay: true,
+  animationData: loading.default,
+  rendererSettings: {
+    preserveAspectRatio: "xMidYMid slice",
+  },
+};
+
+const defaultOptions2 = {
+  loop: true,
+  autoplay: true,
+  animationData: success.default,
+  rendererSettings: {
+    preserveAspectRatio: "xMidYMid slice",
+  },
+};
 
 const { MediaContextProvider, Media } = createMedia({
   breakpoints: {
@@ -15,21 +50,167 @@ const { MediaContextProvider, Media } = createMedia({
 })
 
 
-class DesktopContainer extends Component {
-  state = {}
+function Home() {
+    const [appState, setAppState] = useState(STATE_IDLE);
+  const [roomUrl, setRoomUrl] = useState(null);
+    const [copyUrl, setCopyUrl] = useState(null);
+    const [loading, setLoading] = useState(false);
+  const [callObject, setCallObject] = useState(null);
+    const [fixed, setFixed] = useState(null);
+  
+    const hideFixedMenu = () => setFixed(  false );
+  const showFixedMenu = () => setFixed( true );
+  
+	const handleCallback = (name) =>{
+					setLoading(true);
+                    createCall().then((url) => {startJoiningCall(url);});
+    }
+    
+   const createCall = useCallback(() => {
+    setAppState(STATE_CREATING);
+    return axios
+        .get("http://localhost:8080/createroom")
+        .then((response) => response.data.url)
+        .catch((error) =>{
+        setRoomUrl(null);
+        setAppState(STATE_IDLE);
+		console.log(error)
+        });
+  }, []);
 
-  hideFixedMenu = () => this.setState({ fixed: false })
-  showFixedMenu = () => this.setState({ fixed: true })
-  render() {
-    const { children } = this.props
-    const { fixed } = this.state
-	   
+  /**
+   * Starts joining an existing call.
+   *
+   * NOTE: In this demo we show how to completely clean up a call with destroy(),
+   * which requires creating a new call object before you can join() again.
+   * This isn't strictly necessary, but is good practice when you know you'll
+   * be done with the call object for a while and you're no longer listening to its
+   * events.
+   */
+  const startJoiningCall = useCallback((url) => {
+  	setLoading(true);
+    const newCallObject = DailyIframe.createCallObject();
+    setRoomUrl(url);
+    setCopyUrl(url);
+    setCallObject(newCallObject);
+    setAppState(STATE_JOINING);
+    newCallObject.join({ url });
+  }, []);
+
+  /**
+   * Starts leaving the current call.
+   */
+  const startLeavingCall = useCallback(() => {
+    if (!callObject) return;
+    // If we're in the error state, we've already "left", so just clean up
+    if (appState === STATE_ERROR) {
+      callObject.destroy().then(() => {
+        setRoomUrl(null);
+        setCallObject(null);
+        setAppState(STATE_IDLE);
+      });
+    } else {
+      setAppState(STATE_LEAVING);
+      callObject.leave();
+      setLoading(false);
+    }
+  }, [callObject, appState]);
+  useEffect(() => {
+    const url = roomUrlFromPageUrl();
+    url && startJoiningCall(url);
+  }, [startJoiningCall]);
+
+  useEffect(() => {
+    const pageUrl = pageUrlFromRoomUrl(roomUrl);
+    if (pageUrl === window.location.href) return;
+    window.history.replaceState(null, null, pageUrl);
+  }, [roomUrl]);
+
+  useEffect(() => {
+    if (!callObject) return;
+
+    const events = ['joined-meeting', 'left-meeting', 'error'];
+
+    function handleNewMeetingState(event) {
+      event && logDailyEvent(event);
+      switch (callObject.meetingState()) {
+        case 'joined-meeting':
+          setAppState(STATE_JOINED);
+          break;
+        case 'left-meeting':
+          callObject.destroy().then(() => {
+            setRoomUrl(null);
+            setLoading(false);
+            setCallObject(null);
+            setAppState(STATE_IDLE);
+          });
+          break;
+        case 'error':
+          setAppState(STATE_ERROR);
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Use initial state
+    handleNewMeetingState();
+
+    // Listen for changes in state
+    for (const event of events) {
+      callObject.on(event, handleNewMeetingState);
+    }
+
+    // Stop listening for changes in state
+    return function cleanup() {
+      for (const event of events) {
+        callObject.off(event, handleNewMeetingState);
+      }
+    };
+  }, [callObject]);
+
+  /**
+   * Listen for app messages from other call participants.
+   */
+  useEffect(() => {
+    if (!callObject) {
+      return;
+    }
+
+    function handleAppMessage(event) {
+      if (event) {
+        logDailyEvent(event);
+        console.log(`received app message from ${event.fromId}: `, event.data);
+      }
+    }
+
+    callObject.on('app-message', handleAppMessage);
+
+    return function cleanup() {
+      callObject.off('app-message', handleAppMessage);
+    };
+  }, [callObject]);
+
+  /**
+   * Show the call UI if we're either joining, already joined, or are showing
+   * an error.
+   */
+  const showCall = [ STATE_JOINED, STATE_ERROR].includes(
+    appState
+  );
+  const enableCallButtons = [STATE_JOINED, STATE_ERROR].includes(appState);
+   
+	 if(!showCall) 
+	 {
+	 if(!loading)
+	 {
     return (
+      <MediaContextProvider>
       <Media greaterThan='mobile'>
         <Visibility
           once={false}
-          onBottomPassed={this.showFixedMenu}
-          onBottomPassedReverse={this.hideFixedMenu}
+          onBottomPassed={showFixedMenu}
+          onBottomPassedReverse={hideFixedMenu}
         >
           <Segment
           inverted color="teal"
@@ -37,170 +218,117 @@ class DesktopContainer extends Component {
             style={{ minHeight: 700, padding: '1em 0em' }}
             vertical
           >
-          <Segment inverted color="black">
-            <Menu inverted
+          <Segment 
+          inverted color="black">
+            <Menu
+            inverted
               fixed={fixed ? 'top' : null}
               pointing={!fixed}
               secondary={!fixed}
               size='large'
             >
-            <Navigation active="usage"/>
+  			<Navigation active="usage" parentCallback = {handleCallback} parentCallback2 = {startJoiningCall}/>
             </Menu>
             </Segment>
             <HomepageHeading />
           </Segment>
         </Visibility>
-
-        {children}
       </Media>
-    )
-  }
-}
+      
+      <Segment style={{ padding: '8em 0em' }} vertical>
+      <Container text style={{textAlign:"center"}}>
+        <Header as='h3' style={{ fontSize: '2em' }}>
+          It's as easy as dialing a number, no kidding.
+        </Header>
+        <p style={{ fontSize: '1.33em'}}>
+          Just register using some simple credentials and log in with the same. There you go, ready to get a call started.
+        </p>
+      </Container>
+    </Segment>
+      
+      <Container text style={{textAlign:"center" ,margin:'2em'}}>
+       <Header as='h2' style={{ fontSize: '2em', color:'purple' }}>
+       Getting Access
+        </Header>
+        </Container>
+                     
+      <Segment style={{ padding: '8em 0em' }} vertical>  
+      <Grid columns={2} relaxed='very' stackable> 
+      <Grid.Column >
+        <Container text style={{textAlign:"center",padding:'1em'}}>
+        <Header as='h3' style={{ fontSize: '1.3em' }}>
+			FROM YOUR PC, OR LAPTOP
+        </Header>
+        <p style={{ fontSize: '1.33em'}}>
+		You can join or start a call from both your PC or laptop, for free of cost, using any modern web browser . There is no need to install any other software to get this running.
+        </p>
+      </Container>
+      </Grid.Column>
 
-DesktopContainer.propTypes = {
-  children: PropTypes.node,
-}
-
-class MobileContainer extends Component {
-  state = {}
-
-  handleSidebarHide = () => this.setState({ sidebarOpened: false })
-	handleClick = (e, {name}) => this.setState({ activeItem:name})
-  handleToggle = () => this.setState({ sidebarOpened: true })
-
-  render() {
-    const { children } = this.props
-    const { sidebarOpened } = this.state
-	    const { activeItem} =this.state
-    return (
-      <Media as={Sidebar.Pushable} at='mobile'>
-        <Sidebar.Pushable>
-          <Sidebar
-            as={Menu}
-            animation='overlay'
-            onHide={this.handleSidebarHide}
-            vertical
-            visible={sidebarOpened}
-          >
-          <Menu.Item as={Link} to="/" name='Home' active={activeItem==='Home'} onClick={this.handleClick}>
-                  Home
-                </Menu.Item>
-                <Menu.Item as={Link} to="/usage_steps" name='usage_steps' active onClick={this.handleClick}>How it works</Menu.Item>
-            <Menu.Item as={Link} to="/login">Log in</Menu.Item>
-            <Menu.Item as={Link} to="/signup">Sign Up</Menu.Item>
-          </Sidebar>
-
-          <Sidebar.Pusher dimmed={sidebarOpened}>
-            <Segment
-              textAlign='center'
-              style={{ minHeight: 350, padding: '1em 0em' }}
-              vertical>
-              
-              <Container>
-                <Menu pointing secondary size='large'>
-                  <Menu.Item onClick={this.handleToggle}>
-                    <Icon name='sidebar' />
-                  </Menu.Item>
-                  <Menu.Item position='right'>
-                    <Button as={Link} to="/login" >
-                    Log in
-                  </Button>
-                  <Button as={Link} to="/signup"  style={{ marginLeft: '0.5em' }}>
-                    Sign Up
-                  </Button>
-                  </Menu.Item>
-                </Menu>
-              </Container>
-              <HomepageHeading mobile />
-            </Segment>
-
-            {children}
-          </Sidebar.Pusher>
-        </Sidebar.Pushable>
-      </Media>
-    )
-  }
-}
-
-MobileContainer.propTypes = {
-  children: PropTypes.node,
-}
-
-const ResponsiveContainer = ({ children }) => (
-  <MediaContextProvider>
-    <DesktopContainer>{children}</DesktopContainer>
-    <MobileContainer>{children}</MobileContainer>
-  </MediaContextProvider>
-)
-
-ResponsiveContainer.propTypes = {
-  children: PropTypes.node,
-}
-
-const Usage_steps = () => (
-  <ResponsiveContainer>
-    <Segment style={{ padding: '8em 0em' }} vertical>
-      <Grid container stackable verticalAlign='middle'>
-        <Grid.Row>
-          <Grid.Column width={8}>
-            <Header as='h3' style={{ fontSize: '2em' }}>
-              We Help Companies and Companions
-            </Header>
-            <p style={{ fontSize: '1.33em' }}>
-              We can give your company superpowers to do things that they never thought possible.
-              Let us delight your customers and empower your needs... through pure data analytics.
-            </p>
-            <Header as='h3' style={{ fontSize: '2em' }}>
-              We Make Bananas That Can Dance
-            </Header>
-            <p style={{ fontSize: '1.33em' }}>
-              Yes that's right, you thought it was the stuff of dreams, but even bananas can be
-              bioengineered.
-            </p>
-          </Grid.Column>
-          <Grid.Column floated='right' width={6}>
-            <Image bordered rounded size='large' src='/images/image.png' />
-          </Grid.Column>
-        </Grid.Row>
-        <Grid.Row>
-          <Grid.Column textAlign='center'>
-            <Button size='huge'>Check Them Out</Button>
-          </Grid.Column>
-        </Grid.Row>
-      </Grid>
+      <Grid.Column>
+         <Container text style={{textAlign:"center",padding:'1em'}}>
+        <Header as='h3' style={{ fontSize: '1.3em' }}>
+			FROM YOUR MOBILE PHONE, TABLET
+        </Header>
+        <p style={{ fontSize: '1.33em'}}>
+		Work under progress. But when it's done it'll be as easy as just downloading the app from playstore, registering and getting started right away, like you did with your pc/laptop.
+        </p>
+      </Container>
+      </Grid.Column>
+    </Grid>
+    <Divider vertical >Or</Divider>
     </Segment>
 
-    <Segment style={{ padding: '0em' }} vertical>
-      <Grid celled='internally' columns='equal' stackable>
-        <Grid.Row textAlign='center'>
-          <Grid.Column style={{ paddingBottom: '5em', paddingTop: '5em' }}>
-            <Header as='h3' style={{ fontSize: '2em' }}>
-              "What a Company"
-            </Header>
-            <p style={{ fontSize: '1.33em' }}>That is what they all say about us</p>
-          </Grid.Column>
-          <Grid.Column style={{ paddingBottom: '5em', paddingTop: '5em' }}>
-            <Header as='h3' style={{ fontSize: '2em' }}>
-              "I shouldn't have gone with their competitor."
-            </Header>
-            <p style={{ fontSize: '1.33em' }}>
-              <Image avatar src='/images/avatar/large/nan.jpg' />
-              <b>Nan</b> Chief Fun Officer Acme Toys
-            </p>
-          </Grid.Column>
-        </Grid.Row>
-      </Grid>
-    </Segment>
 
-    <Segment style={{ padding: '8em 0em' }} vertical>
+
+  
+        <Segment style={{ padding: '8em 0em' }} vertical>
+         <Container text style={{textAlign:"center" ,margin:'2em'}}>
+       <Header as='h2' style={{ fontSize: '2em', color:'purple' }}>
+       Basics of using the website
+        </Header>
+        </Container>
+    <Card.Group itemsPerRow={3} style={{margin:'3em'}}>
+    <Card raised >
+        <Image src='images/start.png'  centered  />
+    	<Card.Content>
+        <Card.Header>Start a Call</Card.Header>
+        <Card.Description>
+          Just move to the start a new call button once you've logged in. And ta-da! You can then share the link of the newly created room for others to join in
+        </Card.Description>
+      </Card.Content>
+      </Card>
+      
+    <Card raised style={{margin:'10px'}}>
+        <Image src='images/login.png' size='medium' centered/>
+    	<Card.Content>
+        <Card.Header>Logging in</Card.Header>
+        <Card.Description>
+		Providing the credentials you provided during signing up should be enough.
+        </Card.Description>
+      </Card.Content>
+            </Card>
+            
+    <Card raised >
+        <Image src='images/join.png' centered  />
+    <Card.Content>
+        <Card.Header>Joining a call</Card.Header>
+        <Card.Meta>Co-Worker</Card.Meta>
+        <Card.Description>
+		Hit the join call button once you've logged in and enter the link of the room shared with you. Click Join.
+        </Card.Description>
+      </Card.Content>
+          </Card>          
+  </Card.Group>
+</Segment>
+
+ <Segment style={{ padding: '8em 0em' }} vertical>
       <Container text>
         <Header as='h3' style={{ fontSize: '2em' }}>
-          Breaking The Grid, Grabs Your Attention
+          Meet your friends and loved ones. Ace that meeting.
         </Header>
         <p style={{ fontSize: '1.33em' }}>
-          Instead of focusing on content creation and hard work, we have learned how to master the
-          art of doing nothing by providing massive amounts of whitespace and generic content that
-          can seem massive, monolithic and worth your attention.
+          Invite your clan to this platform. Present your documents, or send that secret message. Our rooms are big enough to accomodate 500 folks at a go, so get that party, (or presentation =3 ) started.
         </p>
         <Button as='a' size='large'>
           Read More
@@ -212,23 +340,21 @@ const Usage_steps = () => (
           horizontal
           style={{ margin: '3em 0em', textTransform: 'uppercase' }}
         >
-          <a href='#'>Case Studies</a>
+          <a href='#'>Move to top</a>
         </Divider>
 
         <Header as='h3' style={{ fontSize: '2em' }}>
-          Did We Tell You About Our Bananas?
+          Quality Assured. And peace of mind.
         </Header>
         <p style={{ fontSize: '1.33em' }}>
-          Yes I know you probably disregarded the earlier boasts as non-sequitur filler content, but
-          it's really true. It took years of gene splicing and combinatory DNA research, but our
-          bananas can really dance.
+     			Now you don't have to get all jittery about a fluctuating network; CrossRoads adapts itself according to the quality of your net connection. It holds on till the very end, making sure you can have as seamless an experience as possible .
         </p>
         <Button as='a' size='large'>
-          I'm Still Quite Interested
+			Might need this in the future
         </Button>
       </Container>
     </Segment>
-
+    
     <Segment inverted vertical style={{ padding: '5em 0em' }}>
       <Container>
         <Grid divided inverted stackable>
@@ -238,32 +364,60 @@ const Usage_steps = () => (
               <List link inverted>
                 <List.Item as='a'>Sitemap</List.Item>
                 <List.Item as='a'>Contact Us</List.Item>
-                <List.Item as='a'>Religious Ceremonies</List.Item>
-                <List.Item as='a'>Gazebo Plans</List.Item>
+                <List.Item as='a'>Our Team</List.Item>
+                <List.Item as='a'>Future Plans</List.Item>
               </List>
             </Grid.Column>
             <Grid.Column width={3}>
               <Header inverted as='h4' content='Services' />
               <List link inverted>
-                <List.Item as='a'>Banana Pre-Order</List.Item>
-                <List.Item as='a'>DNA FAQ</List.Item>
+                <List.Item as='a'>See Plans and Prices</List.Item>
+                <List.Item as='a'>FAQ</List.Item>
                 <List.Item as='a'>How To Access</List.Item>
-                <List.Item as='a'>Favorite X-Men</List.Item>
+                <List.Item as='a'>Use Premium</List.Item>
               </List>
             </Grid.Column>
             <Grid.Column width={7}>
               <Header as='h4' inverted>
-                Footer Header
+				Copyright @Crossroads
               </Header>
               <p>
-                Extra space for a call to action inside the footer that could help re-engage users.
+				Sole ownership of this website belongs to chibi-girl. Mail me at lucysanzenin@gmail.com if you have any queries/complaints. 
               </p>
             </Grid.Column>
           </Grid.Row>
         </Grid>
       </Container>
     </Segment>
-  </ResponsiveContainer>
-)
+        </MediaContextProvider>
+        
+    )
+    }
+    else
+    {
+    return(
+    <Lottie options={defaultOptions1} height={600} width={600} />
+    )
+    }
+    }
+    else
+    {
+     return (
+         <div className="callpage">
+        <CallObjectContext.Provider value={callObject}>
+          <Call roomUrl={copyUrl} />
+          <Tray roomUrl={copyUrl}
+            disabled={!enableCallButtons}
+            onClickLeaveCall={startLeavingCall}
+          />
+        </CallObjectContext.Provider>
+        </div>
+     );
+    }
+}
 
-export default withRouter(Usage_steps);
+
+
+
+
+export default withRouter(Home);

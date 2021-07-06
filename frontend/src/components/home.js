@@ -9,7 +9,6 @@ import {Button,Container,Divider,Grid,Header,Image,List,Menu,Segment,Visibility,
 import HomepageHeading from "./homepage_heading";
 import Navigation from "./navigation";
 import Call from './Call/Call';
-import api from '../api';
 import Tray from './Tray/Tray';
 import CallObjectContext from '../CallObjectContext';
 import { roomUrlFromPageUrl, pageUrlFromRoomUrl } from '../urlUtils';
@@ -112,6 +111,7 @@ function Home() {
       });
     } else {
       setAppState(STATE_LEAVING);
+      setLoading(false);
       callObject.leave();
     }
   }, [callObject, appState]);
@@ -167,6 +167,7 @@ function Home() {
         case 'left-meeting':
           callObject.destroy().then(() => {
             setRoomUrl(null);
+            setLoading(false);
             setCallObject(null);
             setAppState(STATE_IDLE);
           });
@@ -287,29 +288,25 @@ function Home() {
       <Grid container stackable verticalAlign='middle'>
         <Grid.Row>
           <Grid.Column width={8}>
-            <Header as='h3' style={{ fontSize: '2em' }}>
-              We Help Companies and Companions
+       <Header as='h3' style={{ fontSize: '2em' ,color:'purple'}}>
+              We value your privacy
             </Header>
             <p style={{ fontSize: '1.33em' }}>
-              We can give your company superpowers to do things that they never thought possible.
-              Let us delight your customers and empower your needs... through pure data analytics.
+            Crossroads uses stringent security measures to protect your information and privacy. Video conferences on CrossRoads are encrypted during transit. 
+            Our security measures are constantly updated to give you better protection.
             </p>
-            <Header as='h3' style={{ fontSize: '2em' }}>
-              We Make Bananas That Can Dance
+            <Header as='h3' style={{ fontSize: '2em' ,color:'purple'}}>
+			 One stop solution for all : businesses and individual alike.  
             </Header>
             <p style={{ fontSize: '1.33em' }}>
-              Yes that's right, you thought it was the stuff of dreams, but even bananas can be
-              bioengineered.
+			The website has been structured so that it strikes a balance between a homely environment and corporate feel. 
             </p>
           </Grid.Column>
           <Grid.Column floated='right' width={6}>
-            <Image bordered rounded size='large' src='/images/image.png' />
+            <Image bordered rounded size='large' src='/images/logo.jpg' />
           </Grid.Column>
         </Grid.Row>
         <Grid.Row>
-          <Grid.Column textAlign='center'>
-            <Button size='huge'>Check Them Out</Button>
-          </Grid.Column>
         </Grid.Row>
       </Grid>
     </Segment>
@@ -318,18 +315,17 @@ function Home() {
       <Grid celled='internally' columns='equal' stackable>
         <Grid.Row textAlign='center'>
           <Grid.Column style={{ paddingBottom: '5em', paddingTop: '5em' }}>
-            <Header as='h3' style={{ fontSize: '2em' }}>
-              "What a Company"
+            <Header as='h3' style={{ fontSize: '2em', fontStyle: 'italic' }}>
+              "Fluid interface. Seamless connectivity"
             </Header>
             <p style={{ fontSize: '1.33em' }}>That is what they all say about us</p>
           </Grid.Column>
           <Grid.Column style={{ paddingBottom: '5em', paddingTop: '5em' }}>
-            <Header as='h3' style={{ fontSize: '2em' }}>
-              "I shouldn't have gone with their competitor."
+            <Header as='h3' style={{ fontSize: '2em', fontStyle: 'italic' }}>
+              "It's a great enough website to make me want to use it as my goto platform for video and audio online calls"
             </Header>
             <p style={{ fontSize: '1.33em' }}>
-              <Image avatar src='/images/avatar/large/nan.jpg' />
-              <b>Nan</b> Chief Fun Officer Acme Toys
+             Not-so Anonymous User
             </p>
           </Grid.Column>
         </Grid.Row>
@@ -338,13 +334,11 @@ function Home() {
 
     <Segment style={{ padding: '8em 0em' }} vertical>
       <Container text>
-        <Header as='h3' style={{ fontSize: '2em' }}>
-          Breaking The Grid, Grabs Your Attention
+        <Header as='h3' style={{ fontSize: '2em' ,color:'purple'}}>
+          Meet your friends and loved ones. Ace that meeting.
         </Header>
         <p style={{ fontSize: '1.33em' }}>
-          Instead of focusing on content creation and hard work, we have learned how to master the
-          art of doing nothing by providing massive amounts of whitespace and generic content that
-          can seem massive, monolithic and worth your attention.
+          Invite your clan to this platform. Present your documents, or send that secret message. Our rooms are big enough to accomodate 500 folks at a go, so get that party, (or presentation =3 ) started.
         </p>
         <Button as='a' size='large'>
           Read More
@@ -356,19 +350,17 @@ function Home() {
           horizontal
           style={{ margin: '3em 0em', textTransform: 'uppercase' }}
         >
-          <a href='#'>Case Studies</a>
+          <a href='#'>Move to top</a>
         </Divider>
 
-        <Header as='h3' style={{ fontSize: '2em' }}>
-          Did We Tell You About Our Bananas?
+        <Header as='h3' style={{ fontSize: '2em',color:'purple' }}>
+          Quality Assured. And peace of mind.
         </Header>
         <p style={{ fontSize: '1.33em' }}>
-          Yes I know you probably disregarded the earlier boasts as non-sequitur filler content, but
-          it's really true. It took years of gene splicing and combinatory DNA research, but our
-          bananas can really dance.
+     			Now you don't have to get all jittery about a fluctuating network; CrossRoads adapts itself according to the quality of your net connection. It holds on till the very end, making sure you can have as seamless an experience as possible .
         </p>
         <Button as='a' size='large'>
-          I'm Still Quite Interested
+			Might need this in the future
         </Button>
       </Container>
     </Segment>
@@ -382,25 +374,25 @@ function Home() {
               <List link inverted>
                 <List.Item as='a'>Sitemap</List.Item>
                 <List.Item as='a'>Contact Us</List.Item>
-                <List.Item as='a'>Religious Ceremonies</List.Item>
-                <List.Item as='a'>Gazebo Plans</List.Item>
+                <List.Item as='a'>Our Team</List.Item>
+                <List.Item as='a'>Future Plans</List.Item>
               </List>
             </Grid.Column>
             <Grid.Column width={3}>
               <Header inverted as='h4' content='Services' />
               <List link inverted>
-                <List.Item as='a'>Banana Pre-Order</List.Item>
-                <List.Item as='a'>DNA FAQ</List.Item>
+                <List.Item as='a'>See Plans and Prices</List.Item>
+                <List.Item as='a'>FAQ</List.Item>
                 <List.Item as='a'>How To Access</List.Item>
-                <List.Item as='a'>Favorite X-Men</List.Item>
+                <List.Item as='a'>Use Premium</List.Item>
               </List>
             </Grid.Column>
             <Grid.Column width={7}>
               <Header as='h4' inverted>
-                Footer Header
+				Copyright @Crossroads
               </Header>
               <p>
-                Extra space for a call to action inside the footer that could help re-engage users.
+				Sole ownership of this website belongs to chibi-girl. Mail me at lucysanzenin@gmail.com if you have any queries/complaints. 
               </p>
             </Grid.Column>
           </Grid.Row>
@@ -424,12 +416,13 @@ function Home() {
          <div className="callpage">
         <CallObjectContext.Provider value={callObject}>
           <Call roomUrl={copyUrl} />
-          <Tray
+          <Tray roomUrl={copyUrl}
             disabled={!enableCallButtons}
             onClickLeaveCall={startLeavingCall}
           />
         </CallObjectContext.Provider>
         </div>
+        
      );
     }
 }

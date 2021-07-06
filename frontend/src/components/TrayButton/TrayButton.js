@@ -1,4 +1,5 @@
 import React from 'react';
+import Tour from "../tour"
 import './TrayButton.css';
 import Icon, {
   TYPE_MUTE_CAMERA,
@@ -21,7 +22,7 @@ export default function TrayButton(props) {
     <button
       disabled={props.disabled}
       onClick={props.onClick}
-      className={'tray-button' + (props.newButtonGroup ? ' new-group' : '')}
+      className={'tray-button' +(props.target)}
     >
       <Icon type={props.type} highlighted={props.highlighted} />
     </button>

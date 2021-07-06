@@ -1,5 +1,6 @@
 import { withRouter, Link } from "react-router-dom";
 import React, {useState } from 'react';
+import axios from "axios";
 import {Button,Container,Menu,Modal, Input} from 'semantic-ui-react'
 import Auth from "./auth/authenticate";
 function Navigation(props) {
@@ -8,6 +9,31 @@ function Navigation(props) {
   const handleChange = (e,{value}) => {
     setUrl( value);
   };
+  	const handleSubmit = (e) => {
+    
+      const payload = {
+        email: localStorage.getItem("email"),
+        status: "logging out",
+      };
+      
+      axios
+        .post("http://localhost:8080/loggingUser", payload)
+        .then((response) => {
+          if (response.status === 201) {
+            console.log(response.data);
+      		localStorage.removeItem("username");
+      		localStorage.removeItem("email");
+      		localStorage.setItem("visit","notfirst");
+      		window.location.reload();
+ 
+          } else {
+            console.log("Some error ocurred");
+          }
+        })
+        .catch((error) =>{
+        console.log(error);
+        });
+  }
   
  if(Auth.isAuthenticated()){
   return(
@@ -22,7 +48,7 @@ function Navigation(props) {
 						  onClose={() => setOpen(false)}
 						  onOpen={() => setOpen(true)}
 						  open={open}
-						  trigger={<Button style={{ marginLeft: '0.5em' }}>Join Room</Button>}>
+						  trigger={<Button basic color='teal' style={{ marginLeft: '0.5em' }}>Join Room</Button>}>
 						  <Modal.Header>Enter room link</Modal.Header>
 						   <Input fluid placeholder='room url..' onChange={handleChange}/>
 						  <Modal.Actions>
@@ -39,11 +65,11 @@ function Navigation(props) {
 						  </Modal.Actions>
 						</Modal>
      
-        <Button style={{ marginLeft: '0.5em' }}
+        <Button color='blue' style={{ marginLeft: '0.5em' }}
           onClick={() => {props.parentCallback("start");}}>
            Start a new call
     </Button>
-<Button style={{ marginLeft: '0.5em' }} as={Link} to="/"  onClick={() => {console.log("Logged out");localStorage.removeItem("username");window.location.reload();}} >
+<Button basic color='teal' style={{ marginLeft: '0.5em' }} as={Link} to="/"  onClick={handleSubmit} >
                     Log out
                   </Button>
                   
@@ -58,10 +84,10 @@ function Navigation(props) {
                 </Menu.Item>
                 <Menu.Item as={Link} to="/usage_steps" name='usage_steps' active={props.active==="usage"}>How it works</Menu.Item>
                 <Menu.Item position='right'>
-                  <Button as={Link} to="/login" >
+                  <Button color='blue' as={Link} to="/login" >
                     Log in
                   </Button>
-                  <Button as={Link} to="/signup" style={{ marginLeft: '0.5em' }}>
+                  <Button basic color='teal' as={Link} to="/signup" style={{ marginLeft: '0.5em' }}>
                     Sign Up
                   </Button>
                 </Menu.Item>

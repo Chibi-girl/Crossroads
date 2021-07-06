@@ -1,10 +1,34 @@
-.tray-button {
+
+.tray-button-camera {
   width: 44px;
   height: 44px;
   border: none;
   background-color: transparent;
   margin: 0 5px;
 }
+.tray-button-mic {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background-color: transparent;
+  margin: 0 5px;
+}
+.tray-button-screenshare {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background-color: transparent;
+  margin: 0 5px;
+}
+
+.tray-button-chat {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background-color: transparent;
+  margin: 0 5px;
+}
+
 
 .tray-button:disabled {
   opacity: 33%;
@@ -14,7 +38,6 @@
   cursor: pointer;
 }
 
-/* Acts as the first button in a new "group" of buttons separated from those to the left of it */
-.tray-button.new-group {
+.tray-button-leave {
   margin-left: auto;
 }

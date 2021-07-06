@@ -16,7 +16,7 @@ export default function Chat(props) {
     callObject.sendAppMessage({ message: inputValue }, '*');
     const name = callObject.participants().local.user_name
       ? callObject.participants().local.user_name
-      : 'Guest';
+      : localStorage.getItem("username");
     setChatHistory([
       ...chatHistory,
       {
@@ -40,7 +40,7 @@ export default function Chat(props) {
       const participants = callObject.participants();
       const name = participants[event.fromId].user_name
         ? participants[event.fromId].user_name
-        : 'Guest';
+        : localStorage.getItem("username");
       setChatHistory([
         ...chatHistory,
         {

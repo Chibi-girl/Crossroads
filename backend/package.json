@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon server.js --exec babel-node --presets env",
-    "build": "react-scripts build",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "eject": "react-scripts eject"
+    "start": "nodemon index.js --exec babel-node --presets env",
+     "release": "npm run clean && npm run build && npm run serve",
+    "clean": "rm -rf dist && mkdir dist",
+    "serve": "node dist/index.js"
   },
   "keywords": [],
   "author": "",

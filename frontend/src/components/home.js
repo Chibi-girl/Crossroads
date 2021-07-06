@@ -4,6 +4,7 @@ import {withRouter} from "react-router-dom";
 import * as loading from "../animations/loading.json";
 import * as success from "../animations/success.json";
 import './Callpage.css';
+import Error from './error'
 import axios from "axios";
 import {Button,Container,Divider,Grid,Header,Image,List,Menu,Segment,Visibility,} from 'semantic-ui-react'
 import HomepageHeading from "./homepage_heading";
@@ -69,7 +70,7 @@ function Home() {
    const createCall = useCallback(() => {
     setAppState(STATE_CREATING);
     return axios
-        .get("http://localhost:8080/createroom")
+        .get("https://cross-roads.herokuapp.com/createroom")
         .then((response) => response.data.url)
         .catch((error) =>{
         setRoomUrl(null);
@@ -87,10 +88,11 @@ function Home() {
    * be done with the call object for a while and you're no longer listening to its
    * events.
    */
-  const startJoiningCall = useCallback((url) => {
+   const startJoiningCall = useCallback((url) => {
   	setLoading(true);
     const newCallObject = DailyIframe.createCallObject();
     setRoomUrl(url);
+    
     setCopyUrl(url);
     setCallObject(newCallObject);
     setAppState(STATE_JOINING);
@@ -154,7 +156,10 @@ function Home() {
    * longer listening to its events.
    */
   useEffect(() => {
-    if (!callObject) return;
+    if (!callObject)
+    { return;
+    console.log("here");
+    }
 
     const events = ['joined-meeting', 'left-meeting', 'error'];
 
@@ -174,6 +179,7 @@ function Home() {
           break;
         case 'error':
           setAppState(STATE_ERROR);
+		  console.log("here");
           break;
         default:
           break;
@@ -412,6 +418,8 @@ function Home() {
     }
     else
     {
+    if(callObject.meetingState()==='joined-meeting')
+    {
      return (
          <div className="callpage">
         <CallObjectContext.Provider value={callObject}>
@@ -424,6 +432,11 @@ function Home() {
         </div>
         
      );
+     }
+     else
+     {
+     	return (<Error error="true"/>);
+     }
     }
 }
 

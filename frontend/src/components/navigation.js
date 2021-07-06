@@ -17,7 +17,7 @@ function Navigation(props) {
       };
       
       axios
-        .post("http://localhost:8080/loggingUser", payload)
+        .post("https://cross-roads.herokuapp.com/loggingUser", payload)
         .then((response) => {
           if (response.status === 201) {
             console.log(response.data);

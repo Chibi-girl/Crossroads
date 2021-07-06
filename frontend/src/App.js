@@ -17,7 +17,6 @@ function App() {
       <Route exact path="/usage_steps"  component={() => < Usage_steps />} />
       <Route exact path="/login" component={Login} />
        <Route exact path="/signup" component={Signup} />
-       
       <Route component={() => <Error  />} />
       </Switch>
       </Router>

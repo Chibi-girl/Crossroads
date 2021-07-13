@@ -1,27 +1,33 @@
-import React, { useEffect, useContext, useReducer, useCallback } from 'react';
+import React, {
+  useEffect,
+  useContext,
+  useReducer,
+  useCallback,
+  useState,
+} from "react";
 
-import './Call.css';
-import Tile from '../Tile/Tile';
-import CallObjectContext from '../../CallObjectContext';
-import CallMessage from '../CallMessage/CallMessage';
+import "./Call.css";
+import Tile from "../Tile/Tile";
+import CallObjectContext from "../../GlobalContext/CallObjectContext";
+import CallMessage from "../CallMessage/CallMessage";
 import {
   initialCallState,
   CLICK_ALLOW_TIMEOUT,
   PARTICIPANTS_CHANGE,
   CAM_OR_MIC_ERROR,
+  NETWORK_CHANGE,
   FATAL_ERROR,
   callReducer,
   isLocal,
   isScreenShare,
   containsScreenShare,
   getMessage,
-} from './callState';
-import { logDailyEvent } from '../../logUtils';
+} from "./callState";
+import { logDailyEvent } from "../../Utils/logUtils";
 
 export default function Call(props) {
   const callObject = useContext(CallObjectContext);
   const [callState, dispatch] = useReducer(callReducer, initialCallState);
-
   /**
    * Start listening for participant changes, when the callObject is set.
    */
@@ -29,9 +35,9 @@ export default function Call(props) {
     if (!callObject) return;
 
     const events = [
-      'participant-joined',
-      'participant-updated',
-      'participant-left',
+      "participant-joined",
+      "participant-updated",
+      "participant-left",
     ];
 
     function handleNewParticipantsState(event) {
@@ -69,20 +75,38 @@ export default function Call(props) {
       dispatch({
         type: CAM_OR_MIC_ERROR,
         message:
-          (event && event.errorMsg && event.errorMsg.errorMsg) || 'Unknown',
+          (event && event.errorMsg && event.errorMsg.errorMsg) || "Unknown",
       });
     }
 
     // We're making an assumption here: there is no camera error when callObject
     // is first assigned.
 
-    callObject.on('camera-error', handleCameraErrorEvent);
+    callObject.on("camera-error", handleCameraErrorEvent);
 
     return function cleanup() {
-      callObject.off('camera-error', handleCameraErrorEvent);
+      callObject.off("camera-error", handleCameraErrorEvent);
     };
   }, [callObject]);
 
+  useEffect(() => {
+    if (!callObject) return;
+    function handleNetworkEvent(event) {
+      console.log("here");
+      logDailyEvent(event);
+      dispatch({
+        type: NETWORK_CHANGE,
+        message: event.threshold,
+        participants: callObject.participants(),
+        id: callObject.participants().local.user_id,
+      });
+    }
+    callObject.on("network-quality-change", handleNetworkEvent);
+
+    return function cleanup() {
+      callObject.off("network-quality-change", handleNetworkEvent);
+    };
+  }, [callObject]);
   /**
    * Start listening for fatal errors, when the callObject is set.
    */
@@ -93,17 +117,17 @@ export default function Call(props) {
       logDailyEvent(e);
       dispatch({
         type: FATAL_ERROR,
-        message: (e && e.errorMsg) || 'Unknown',
+        message: (e && e.errorMsg) || "Unknown",
       });
     }
 
     // We're making an assumption here: there is no error when callObject is
     // first assigned.
 
-    callObject.on('error', handleErrorEvent);
+    callObject.on("error", handleErrorEvent);
 
     return function cleanup() {
-      callObject.off('error', handleErrorEvent);
+      callObject.off("error", handleErrorEvent);
     };
   }, [callObject]);
 
@@ -123,18 +147,12 @@ export default function Call(props) {
   /**
    * Send an app message to the remote participant whose tile was clicked on.
    */
-  const sendHello = useCallback(
-    (participantId) => {
-      callObject &&
-        callObject.sendAppMessage({ hello: 'world' }, participantId);
-    },
-    [callObject]
-  );
 
   function getTiles() {
     let largeTiles = [];
     let smallTiles = [];
     Object.entries(callState.callItems).forEach(([id, callItem]) => {
+      // creating a small time for local participant, large tiles for all other cases
       const isLarge =
         isScreenShare(id) ||
         (!isLocal(id) && !containsScreenShare(callState.callItems));
@@ -143,16 +161,14 @@ export default function Call(props) {
           key={id}
           videoTrackState={callItem.videoTrackState}
           audioTrackState={callItem.audioTrackState}
+          username={callItem.username}
           isLocalPerson={isLocal(id)}
           isLarge={isLarge}
+          callObject={callObject}
+          id={id}
+          network={callItem.networkChange}
           disableCornerMessage={isScreenShare(id)}
-          onClick={
-            isLocal(id)
-              ? null
-              : () => {
-                  sendHello(id);
-                }
-          }
+          local={isLocal(id) ? true : false}
         />
       );
       if (isLarge) {
@@ -166,20 +182,14 @@ export default function Call(props) {
 
   const [largeTiles, smallTiles] = getTiles();
   const message = getMessage(callState);
-  if (message && message.detail==="copyurl")
-  {
-  	message.detail=props.roomUrl;
+  if (message && message.detail === "copyurl") {
+    message.detail = props.roomUrl;
   }
   return (
     <div className="call">
-      <div className="large-tiles">
-        {
-          !message
-            ? largeTiles
-            : null 
-        }
-      </div>
+      <div className="large-tiles">{!message ? largeTiles : null}</div>
       <div className="small-tiles">{smallTiles}</div>
+      {/* If there is some error or only one participate is in call, display message accordingly in center of screen*/}
       {message && (
         <CallMessage
           header={message.header}
@@ -188,6 +198,5 @@ export default function Call(props) {
         />
       )}
     </div>
-
   );
 }

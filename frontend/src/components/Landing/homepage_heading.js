@@ -1,27 +1,26 @@
-import PropTypes from "prop-types";
 import React from "react";
 import { Link } from "react-router-dom";
-import { Button, Container, Header, Icon } from "semantic-ui-react";
+import { Button, Container, Header, Icon,Image } from "semantic-ui-react";
 
-const HomepageHeading = ({ mobile }) => (
+const HomepageHeading = () => (
   <Container text>
     <Header
       as="h1"
       content="Crossroads"
       style={{
-        fontSize: mobile ? "2em" : "4em",
+        fontSize: "4em",
         fontWeight: "normal",
         marginBottom: 0,
-        marginTop: mobile ? "1.5em" : "3em",
+        marginTop: "1.8em",
       }}
     />
     <Header
       as="h2"
       content="Making every connection matter"
       style={{
-        fontSize: mobile ? "1.5em" : "1.7em",
+        fontSize: "1.7em",
         fontWeight: "normal",
-        marginTop: mobile ? "0.5em" : "1.5em",
+        marginTop: "1.5em",
       }}
     />
     <Button primary size="huge" as={Link} to="/signup">
@@ -31,8 +30,5 @@ const HomepageHeading = ({ mobile }) => (
   </Container>
 );
 
-HomepageHeading.propTypes = {
-  mobile: PropTypes.bool,
-};
 
 export default HomepageHeading;

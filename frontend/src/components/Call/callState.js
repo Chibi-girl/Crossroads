@@ -13,6 +13,8 @@ const initialCallState = {
     local: {
       videoTrackState: null,
       audioTrackState: null,
+      username: null,
+      networkChange: null,
     },
   },
   clickAllowTimeoutFired: false,
@@ -26,28 +28,36 @@ const initialCallState = {
  * CLICK_ALLOW_TIMEOUT action structure:
  * - type: string
  */
-const CLICK_ALLOW_TIMEOUT = 'CLICK_ALLOW_TIMEOUT';
+const CLICK_ALLOW_TIMEOUT = "CLICK_ALLOW_TIMEOUT";
 
 /**
  * PARTICIPANTS_CHANGE action structure:
  * - type: string
  * - participants: Object (from Daily callObject.participants())
  */
-const PARTICIPANTS_CHANGE = 'PARTICIPANTS_CHANGE';
+const PARTICIPANTS_CHANGE = "PARTICIPANTS_CHANGE";
 
 /**
  * CAM_OR_MIC_ERROR action structure:
  * - type: string
  * - message: string
  */
-const CAM_OR_MIC_ERROR = 'CAM_OR_MIC_ERROR';
+const CAM_OR_MIC_ERROR = "CAM_OR_MIC_ERROR";
+/**
+ * NETWORK_CHANGE action structure:
+ * - type: string
+ * - participants : object list of participants in call
+ * - message: string
+ * - id : user_id of local participant whose network change is being monitored
+ */
+const NETWORK_CHANGE = "NETWORK_CHANGE";
 
 /**
- * CAM_OR_MIC_ERROR action structure:
+ * FATAL_ERROR action structure:
  * - type: string
  * - message: string
  */
-const FATAL_ERROR = 'FATAL_ERROR';
+const FATAL_ERROR = "FATAL_ERROR";
 
 // --- Reducer and helpers --
 
@@ -64,6 +74,9 @@ function callReducer(callState, action) {
         ...callState,
         callItems,
       };
+    case NETWORK_CHANGE:
+      callItems = getItems(action.participants, action.id, action.message);
+      return { ...callState, callItems };
     case CAM_OR_MIC_ERROR:
       return { ...callState, camOrMicError: action.message };
     case FATAL_ERROR:
@@ -74,8 +87,9 @@ function callReducer(callState, action) {
 }
 
 function getLocalCallItem(callItems) {
-  return callItems['local'];
+  return callItems["local"];
 }
+// set audio and video status of participants when a participant joins or leaves or updates audio/video status
 
 function getCallItems(participants) {
   let callItems = { ...initialCallState.callItems }; // Ensure we *always* have a local participant
@@ -83,34 +97,75 @@ function getCallItems(participants) {
     callItems[id] = {
       videoTrackState: participant.tracks.video,
       audioTrackState: participant.tracks.audio,
+      username: participant.user_name,
+      networkChange: "good",
     };
     if (shouldIncludeScreenCallItem(participant)) {
-      callItems[id + '-screen'] = {
+      callItems[id + "-screen"] = {
         videoTrackState: participant.tracks.screenVideo,
         audioTrackState: participant.tracks.screenAudio,
+        username: participant.user_name,
+        networkChange: "good",
       };
     }
   }
   return callItems;
 }
 
+function getItems(participants, id, message) {
+  let callItems = { ...initialCallState.callItems }; // Ensure we *always* have a local participant
+  for (const [id, participant] of Object.entries(participants)) {
+    if (participant.user_id === id) {
+      callItems[id] = {
+        videoTrackState: participant.tracks.video,
+        audioTrackState: participant.tracks.audio,
+        username: participant.user_name,
+        networkChange: message,
+      };
+      if (shouldIncludeScreenCallItem(participant)) {
+        callItems[id + "-screen"] = {
+          videoTrackState: participant.tracks.screenVideo,
+          audioTrackState: participant.tracks.screenAudio,
+          username: participant.user_name,
+          networkChange: message,
+        };
+      }
+    } else {
+      callItems[id] = {
+        videoTrackState: participant.tracks.video,
+        audioTrackState: participant.tracks.audio,
+        username: participant.user_name,
+        networkChange: "good",
+      };
+      if (shouldIncludeScreenCallItem(participant)) {
+        callItems[id + "-screen"] = {
+          videoTrackState: participant.tracks.screenVideo,
+          audioTrackState: participant.tracks.screenAudio,
+          username: participant.user_name,
+          networkChange: "good",
+        };
+      }
+    }
+    console.log(callItems[id]);
+  }
+  return callItems;
+}
+
 function shouldIncludeScreenCallItem(participant) {
-  const trackStatesForInclusion = ['loading', 'playable', 'interrupted'];
+  const trackStatesForInclusion = ["loading", "playable", "interrupted"];
   return (
     trackStatesForInclusion.includes(participant.tracks.screenVideo.state) ||
     trackStatesForInclusion.includes(participant.tracks.screenAudio.state)
   );
 }
 
-// --- Derived data ---
-
 // True if id corresponds to local participant (*not* their screen share)
 function isLocal(id) {
-  return id === 'local';
+  return id === "local";
 }
 
 function isScreenShare(id) {
-  return id.endsWith('-screen');
+  return id.endsWith("-screen");
 }
 
 function containsScreenShare(callItems) {
@@ -133,12 +188,12 @@ function getMessage(callState) {
   } else if (callState.camOrMicError) {
     header = `Camera or mic access error: ${callState.camOrMicError}`;
     detail =
-      'See https://help.daily.co/en/articles/2528184-unblock-camera-mic-access-on-a-computer to troubleshoot.';
+      "See https://help.daily.co/en/articles/2528184-unblock-camera-mic-access-on-a-computer to troubleshoot.";
     isError = true;
   } else if (shouldShowClickAllow()) {
     header = 'Click "Allow" to enable camera and mic access';
   } else if (Object.keys(callState.callItems).length === 1) {
-    header = "Copy and share this URL to invite others";
+    header = "Copy and share this room code to invite others";
     detail = "copyurl";
   }
   return header || detail ? { header, detail, isError } : null;
@@ -149,6 +204,7 @@ export {
   CLICK_ALLOW_TIMEOUT,
   PARTICIPANTS_CHANGE,
   CAM_OR_MIC_ERROR,
+  NETWORK_CHANGE,
   FATAL_ERROR,
   callReducer,
   isLocal,

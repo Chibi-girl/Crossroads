@@ -44,6 +44,42 @@
   line-height: 17px;
 }
 
+.tile .topcorner{
+position: absolute;
+  color: #ffffff;
+  background-color: #000000;
+  padding: 10px;
+  margin: 0;
+  top: 0;
+  right: 0;
+  font-size: 17px;
+  line-height: 17px;
+}
+
+.tile .bottomcorner{
+	position: absolute;
+  color: red;
+  background-color: #000000;
+  padding: 10px;
+  margin: 0;
+  bottom: 0;
+  right: 0;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.tile .bottomicon{
+position: absolute;
+  color: #89CFF0;
+    opacity: 1;
+  padding: 10px;
+  margin: 0;
+  top: 3px;
+  right: 10px;
+  font-size: 17px;
+  line-height: 17px;
+}
+
 .tile .corner {
   position: absolute;
   color: #ffffff;

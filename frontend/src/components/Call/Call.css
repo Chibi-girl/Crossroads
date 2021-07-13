@@ -12,7 +12,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(30%, 1fr));
   align-items: center;
-  overflow-y: scroll;
+  overflow-y: auto;
 }
 
 .small-tiles {

@@ -1,10 +1,13 @@
 import mongoose from "mongoose";
-import 'dotenv/config';
+import "dotenv/config";
+
 const fetch = require("node-fetch");
 const users = require("../models/user_model.js");
 
+//logging in user with the credentials provided. If email is not found or password of document mismatches, send error message
 exports.loggingUser = async (req, res) => {
   if (req.body.status === "logging in") {
+    //if user is logging in
     let password = req.body.password;
     await users.findOne({ email: req.body.email }, (err, user) => {
       if (err) {
@@ -25,7 +28,7 @@ exports.loggingUser = async (req, res) => {
                   .status(404)
                   .send("Cannot update status . Maybe user was not found!");
               } else {
-               // console.log(data);
+                // console.log(data);
                 res.status(200).send(data);
               }
             })
@@ -38,10 +41,11 @@ exports.loggingUser = async (req, res) => {
       }
     });
   } else {
+    //user is logging out. Just email is required to set the status in the document
     users
       .findOneAndUpdate(
         { email: req.body.email },
-        { $set:{ status: "logged out" , visit:"notfirst"}},
+        { $set: { status: "logged out", visit: "notfirst" } },
         { useFindAndModify: false }
       )
       .then((data) => {
@@ -50,7 +54,6 @@ exports.loggingUser = async (req, res) => {
             .status(404)
             .send("Cannot update status . Maybe user was not found!");
         } else {
-          //console.log(data);
           res.status(201).send(data);
         }
       })
@@ -60,16 +63,19 @@ exports.loggingUser = async (req, res) => {
   }
 };
 
+//register a new user with credentials. If email already exists in database, send error message
 exports.registerUser = async (req, res) => {
   let obj = {
     user_name: req.body.username,
     status: "logged in",
     visit: "first",
+    rooms: [],
     password: req.body.password,
     email: req.body.email,
   };
   users.find({ email: req.body.email }, (err, user) => {
     if (!user.length) {
+      //no user with that email exists. It's okay to create a new profile.
       let new_user = new users(obj);
       if (!new_user) {
         return res.status(404).json({ success: false, error: "Schema failed" });
@@ -83,30 +89,8 @@ exports.registerUser = async (req, res) => {
           return res.status(404).send("Error: New user registration not done.");
         });
     } else {
+      //email already in use. Send error message.
       res.status(400).send("User already exits.");
     }
   });
-};
-
-exports.getRoom = async (req,res) => {
-const exp = Math.round(Date.now() / 1000) + 10 * 30;
-const newRoomEndpoint ="https://api.daily.co/v1/rooms"
-  const options = {
-    properties: {
-      exp: exp,
-    },
-  };
-  const headers = {
-  Authorization: `${process.env.DAILY_API_KEY}`
-  };
-  let response = await fetch(newRoomEndpoint, {
-    method: 'POST',
-    headers: {'Authorization': `Bearer ${process.env.DAILY_API_KEY}`},
-    body: JSON.stringify(options),
-    mode: 'cors',
-  }),
-    room = await response.json();
-    
-  return res.status(200).send(room);
-
 };

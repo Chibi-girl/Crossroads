@@ -1,30 +1,38 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import './Tile.css';
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
+import "./Tile.css";
+import { Icon, Input, Button, Transition } from "semantic-ui-react";
 
+/* generating message based on participant's audio, video track status */
 function getTrackUnavailableMessage(kind, trackState) {
   if (!trackState) return;
   switch (trackState.state) {
-    case 'blocked':
+    case "blocked":
       if (trackState.blocked.byPermissions) {
         return `${kind} permission denied`;
       } else if (trackState.blocked.byDeviceMissing) {
         return `${kind} device missing`;
       }
       return `${kind} blocked`;
-    case 'off':
+    case "off":
       if (trackState.off.byUser) {
         return `${kind} muted`;
       } else if (trackState.off.byBandwidth) {
         return `${kind} muted to save bandwidth`;
       }
       return `${kind} off`;
-    case 'sendable':
+    case "sendable":
       return `${kind} not subscribed`;
-    case 'loading':
+    case "loading":
       return `${kind} loading...`;
-    case 'interrupted':
+    case "interrupted":
       return `${kind} interrupted`;
-    case 'playable':
+    case "playable":
       return null;
   }
 }
@@ -41,25 +49,26 @@ function getTrackUnavailableMessage(kind, trackState) {
 export default function Tile(props) {
   const videoEl = useRef(null);
   const audioEl = useRef(null);
-
+  const [msg, setMsg] = useState("");
+  const [open, setOpen] = useState(false);
   const videoTrack = useMemo(() => {
-    return props.videoTrackState && props.videoTrackState.state === 'playable'
+    return props.videoTrackState && props.videoTrackState.state === "playable"
       ? props.videoTrackState.track
       : null;
   }, [props.videoTrackState]);
 
   const audioTrack = useMemo(() => {
-    return props.audioTrackState && props.audioTrackState.state === 'playable'
+    return props.audioTrackState && props.audioTrackState.state === "playable"
       ? props.audioTrackState.track
       : null;
   }, [props.audioTrackState]);
 
   const videoUnavailableMessage = useMemo(() => {
-    return getTrackUnavailableMessage('video', props.videoTrackState);
+    return getTrackUnavailableMessage("video", props.videoTrackState);
   }, [props.videoTrackState]);
 
   const audioUnavailableMessage = useMemo(() => {
-    return getTrackUnavailableMessage('audio', props.audioTrackState);
+    return getTrackUnavailableMessage("audio", props.audioTrackState);
   }, [props.audioTrackState]);
 
   /**
@@ -78,6 +87,9 @@ export default function Tile(props) {
       (audioEl.current.srcObject = new MediaStream([audioTrack]));
   }, [audioTrack]);
 
+  const handleChange = (event) => {
+    setMsg(event.target.value);
+  };
   function getVideoComponent() {
     return videoTrack && <video autoPlay muted playsInline ref={videoEl} />;
   }
@@ -116,21 +128,95 @@ export default function Tile(props) {
       )
     );
   }
+  //send unicast (private dm) to a participant
+  const sendHello = (participantId) => {
+    console.log(msg);
+    props.callObject.sendAppMessage({ message: msg }, participantId);
+    setMsg("");
+  };
 
+  const duration = 800;
   function getClassNames() {
-    let classNames = 'tile';
-    classNames += props.isLarge ? ' large' : ' small';
-    props.isLocalPerson && (classNames += ' local');
+    let classNames = "tile";
+    classNames += props.isLarge ? " large" : " small";
+    props.isLocalPerson && (classNames += " local");
     return classNames;
   }
+  if (props.username !== null) {
+    if (props.local === false) {
+      //display the unicast message icon on tile only for non-local participants
+      return (
+        <div className={getClassNames()} onClick={props.onClick}>
+          <div className="background" />
+          {getOverlayComponent()}
+          {getVideoComponent()}
+          {getAudioComponent()}
 
-  return (
-    <div className={getClassNames()} onClick={props.onClick}>
-      <div className="background" />
-      {getOverlayComponent()}
-      {getVideoComponent()}
-      {getAudioComponent()}
-      {getCornerMessageComponent()}
-    </div>
-  );
+          <Transition visible={open} animation="slide left" duration={duration}>
+            <div className="topcorner">
+              <Input
+                placeholder="send private message"
+                onChange={handleChange}
+                value={msg}
+              ></Input>
+              <Button
+                color="blue"
+                onClick={() => sendHello(props.id)}
+                style={{ marginLeft: "0.8em" }}
+              >
+                Send unicast
+              </Button>
+              <Icon
+                link
+                color="red"
+                name="cancel"
+                style={{ marginLeft: "0.8em" }}
+                onClick={() => setOpen(false)}
+              />
+            </div>
+          </Transition>
+
+          {open === true ? null : (
+            <Icon
+              name="send"
+              size="big"
+              link
+              onClick={() => setOpen(true)}
+              className="bottomicon"
+            />
+          )}
+          {getCornerMessageComponent()}
+          {props.network === "good" ? null : (
+            <div className="bottomcorner">
+              <p>
+                Participant's net quality is bad. Might be unable to see/hear
+                you
+              </p>
+            </div>
+          )}
+        </div>
+      );
+    } else {
+      //display message if participant's net quality is bad on bottom right corner
+      return (
+        <div className={getClassNames()} onClick={props.onClick}>
+          <div className="background" />
+          {getOverlayComponent()}
+          {getVideoComponent()}
+          {getAudioComponent()}
+          {getCornerMessageComponent()}
+          {props.network === "good" ? null : (
+            <div className="bottomcorner">
+              <p>
+                Participant's net quality is bad. Might be unable to see/hear
+                you
+              </p>
+            </div>
+          )}
+        </div>
+      );
+    }
+  } else {
+    return null;
+  }
 }

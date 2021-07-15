@@ -5,6 +5,7 @@ Here's the link to [Crossroads frontend](https://crossroads-video-conf-site.netl
 
 Features of the website:
 - Screen Sharing
+- Unicast(Private dm) during meet
 - Chat during and Post Meet
 - Sharing room link on social media through website
 - Platform Walkthrough

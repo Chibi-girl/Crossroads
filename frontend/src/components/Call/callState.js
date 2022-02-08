@@ -75,8 +75,8 @@ function callReducer(callState, action) {
         callItems,
       };
     case NETWORK_CHANGE:
-      callItems = getItems(action.participants, action.id, action.message);
-      return { ...callState, callItems };
+      const callItem = getItems(action.participants, action.id, action.message);
+      return { ...callState, callItem };
     case CAM_OR_MIC_ERROR:
       return { ...callState, camOrMicError: action.message };
     case FATAL_ERROR:
@@ -146,7 +146,6 @@ function getItems(participants, id, message) {
         };
       }
     }
-    console.log(callItems[id]);
   }
   return callItems;
 }
